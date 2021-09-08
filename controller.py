@@ -21,9 +21,19 @@ def run_controller(times, set_points, \
                    read_callback=None, \
                    write_callback=None, \
                    controller_fn=None):
+
+    # log program
+    f = open('programs/%s.txt' % datetime.isoformat(datetime.now(), \
+                                                   timespec='minutes'), 'w')
+
+    for i in range(len(times)):
+        f.write("%0.2f, %0.2f\n" % (times[i], set_points[i]))
+
+    f.close()
+
     
     ser = serial.Serial('/dev/ttyACM0', timeout=7)
-
+    
     t_start = datetime.now()
     t_prev = times[0]
     sp_prev = set_points[0]
@@ -37,6 +47,7 @@ def run_controller(times, set_points, \
     
     while True:
         if len(times) == 0:
+            ser.write(bytes("0.0\n", 'utf-8'))
             return
 
         t_curr = (datetime.now() - t_start).seconds/60
@@ -44,6 +55,10 @@ def run_controller(times, set_points, \
         while t_curr > times[0]:
             t_prev = times.pop(0)
             sp_prev = set_points.pop(0)
+            if len(times) == 0:
+                ser.write(bytes("0.0\n", 'utf-8'))
+                return
+
 
         a = (t_curr - t_prev)/(times[0] - t_prev)
         sp_curr = (1-a)*sp_prev + a*set_points[0]
@@ -75,4 +90,4 @@ def run_controller(times, set_points, \
         
 def default_controller(dT):
     k = 0.02
-    return min(1, max(0, k*dT))
+    return min(0.5, max(0, k*dT))
