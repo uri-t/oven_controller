@@ -1,5 +1,4 @@
 from datetime import datetime
-from controller import run_controller
 
 def writer_fn(f):
     def write_temps(t, T):
@@ -42,11 +41,7 @@ def controller_fn():
     return fn
 
 
-f = open('results/%s.txt' % datetime.isoformat(datetime.now(), \
-                                                   timespec='minutes'), 'a')
-
-
-run_controller([0, 115, 125, 158, 188], \
-               [25, 370, 370, 470, 470], writer_fn(f), \
-                                             write_duty_cycle,
-                                             controller_fn())
+#run_controller([0, 115, 125, 158, 188], \
+#               [25, 370, 370, 470, 470], writer_fn(f), \
+#                                             write_duty_cycle,
+#                                             controller_fn())

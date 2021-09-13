@@ -18,87 +18,94 @@ from datetime import datetime
 # The controller function takes in the difference between the current setpoint
 # and temperature and outputs a duty cycle
 
-def run_controller(times, set_points, \
-                   read_callback=None, \
-                   write_callback=None, \
-                   controller_fn=None,
-                   temp_queue = None,
-                   stopped = False):
+class Controller:
+    def __init__(self):
+        self.stopped = False
 
-    # log program
-    f = open('programs/%s.txt' % datetime.isoformat(datetime.now(), \
+    def terminate(self):
+        self.stopped = True
+
+    def run_controller(self, times, set_points, \
+                       read_callback=None, \
+                       write_callback=None, \
+                       controller_fn=None,
+                       temp_queue = None,
+                       stopped = False):
+
+        # log program
+        f = open('programs/%s.txt' % datetime.isoformat(datetime.now(), \
                                                    timespec='minutes'), 'w')
 
-    for i in range(len(times)):
-        f.write("%0.2f, %0.2f\n" % (times[i], set_points[i]))
-
-    f.close()
-
-    
-    ser = serial.Serial('/dev/ttyACM0', timeout=7)
-    
-    t_start = datetime.now()
-    t_prev = times[0]
-    sp_prev = set_points[0]
-
-    time.sleep(1)
-    ser.reset_input_buffer()
-
-    measure_time = 10
-
-    controller_fn = controller_fn or default_controller
-    
-    while True:
-        if stopped:
-            ser.write(bytes("%0.0f\n" % on_frac, 'utf-8'))
-            break
+        for i in range(len(times)):
+            f.write("%0.2f, %0.2f\n" % (times[i], set_points[i]))
             
-        if len(times) == 0:
-            ser.write(bytes("0.0\n", 'utf-8'))
-            return
+        f.close()
 
-        t_curr = (datetime.now() - t_start).seconds/60
+    
+        ser = serial.Serial('/dev/ttyACM0', timeout=7)
+    
+        t_start = datetime.now()
+        t_prev = times[0]
+        sp_prev = set_points[0]
+
+        time.sleep(1)
+        ser.reset_input_buffer()
         
-        while t_curr > times[0]:
-            t_prev = times.pop(0)
-            sp_prev = set_points.pop(0)
+        measure_time = 10
+        
+        controller_fn = controller_fn or self.default_controller
+        
+        while True:
+            if self.stopped:
+                ser.write(bytes("0.0\n", 'utf-8'))
+                break
+            
             if len(times) == 0:
                 ser.write(bytes("0.0\n", 'utf-8'))
                 return
 
+            t_curr = (datetime.now() - t_start).seconds/60
+        
+            while t_curr > times[0]:
+                t_prev = times.pop(0)
+                sp_prev = set_points.pop(0)
+                if len(times) == 0:
+                    ser.write(bytes("0.0\n", 'utf-8'))
+                    return
 
-        a = (t_curr - t_prev)/(times[0] - t_prev)
-        sp_curr = (1-a)*sp_prev + a*set_points[0]
 
-        print("the current time is %0.1f mins;  current setpoint is %0.1f C" \
-              % (t_curr, sp_curr))
+            a = (t_curr - t_prev)/(times[0] - t_prev)
+            sp_curr = (1-a)*sp_prev + a*set_points[0]
             
-        x = threading.Thread(target=time.sleep, args=(measure_time,))
-        x.start()
-        
-        temps = []
+            print("the current time is %0.1f mins;  current setpoint is %0.1f C" \
+                  % (t_curr, sp_curr))
+            
+            x = threading.Thread(target=time.sleep, args=(measure_time,))
+            x.start()
+            
+            temps = []
 
-        while x.is_alive():
-            data = ser.readline().decode('utf-8').strip().split(",")
-            t = int(data[0])
-            T = float(data[1])
-            temps.append(T)
-            if read_callback:
-                read_callback(t, T)
+            while x.is_alive():
+                data = ser.readline().decode('utf-8').strip().split(",")
+                t = int(data[0])
+                T = float(data[1])
+                temps.append(T)
+                if read_callback:
+                    read_callback(t, T)
 
-            if temp_queue:
-                temp_queue.put(t, T)
+                if temp_queue:
+                    temp_queue.put((t, T))
                 
-        on_frac = controller_fn(sp_curr - sum(temps)/len(temps))
-
-        if write_callback:
-            write_callback(on_frac)
-
-        ser.write(bytes("%0.1f\n" % on_frac, 'utf-8'))
-        ser.flush()
+            on_frac = controller_fn(sp_curr - sum(temps)/len(temps))
+            
+            if write_callback:
+                write_callback(on_frac)
+                
+            ser.write(bytes("%0.1f\n" % on_frac, 'utf-8'))
+            ser.flush()
         
-def default_controller(dT):
-    k = 0.02
-    return min(0.5, max(0, k*dT))
-
+    def default_controller(self, dT):
+        k = 0.02
+        return min(0.5, max(0, k*dT))
+        
     

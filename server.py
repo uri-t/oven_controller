@@ -1,11 +1,13 @@
+from datetime import datetime
 import socket
 import threading
 import queue
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
 import json
+import client
 
-from dummy_controller import Controller
+from controller import Controller
 class Server:
     def run(self):
         # set up socket 
@@ -17,12 +19,13 @@ class Server:
         s.bind((host, port))
         
         s.listen(1)
+        
         # set up queue for communicating with controller
         self.q = queue.Queue()
 
         self.t_controller = None
         stopped = False
-
+        
         self.controller = Controller()
 
         while True:
@@ -61,8 +64,15 @@ class Server:
             self.controller = Controller()
 
         # start new controller
+        f = open('results/%s.txt' % datetime.isoformat(datetime.now(), \
+                                                       timespec='minutes'), 'a')
+        
         self.t_controller = threading.Thread(target = self.controller.run_controller, \
-                                             args = (1,2), kwargs = {'temp_queue': self.q})
+                args = ([0, 60], [40, 180]), \
+                kwargs = { 'read_callback': client.writer_fn(f),
+                           'write_callback': client.write_duty_cycle,
+                           'controller_fn': client.controller_fn(),
+                           'temp_queue': self.q})
         self.t_controller.start()
         return self.serve()
     

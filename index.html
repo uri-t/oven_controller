@@ -11,6 +11,32 @@
       Welcome to the oven. let's get cooking
     </p>
     <button id="tempsButton" type="button">Get Temps</button>
+    
+    <form id="runParams" action="/start">
+      <table>
+	<thead>
+	  <tr>
+	    <th> Temp. (deg. C) </th>
+	    <th> time (mins) </th>
+	  </tr>
+	</thead>
+	<tbody id="runParamsBody">
+	  <tr>
+	    <td>
+	      <input type="number" name="t0">
+	    </td>
+	    <td>
+	      <input type="number" name="T0">
+	    </td>
+	  </tr>
+	</tbody>
+      </table>
+      
+      <input type="submit" value="Run">
+    </form>
+    
+    <button id="addRow" type="button"> + </button>
+    
     <div>
       <canvas id="myChart"></canvas>
     </div>
@@ -22,9 +48,16 @@
 
 	     data: [],
 	 }]
+     }
+
+      const opts = {
+	  scales: {
+	      x: { type: 'linear' },
+	      y: { type: 'linear' }
+	  }
      };
      var ctx = document.getElementById('myChart')
-      var myChart = new Chart(ctx, { type: 'line', data: data})
+      var myChart = new Chart(ctx, { type: 'line', data: data, options: opts})
       
       function getTemps() {
 	  console.log("getting temps")
@@ -42,6 +75,26 @@
       }
 
       document.getElementById('tempsButton').onclick = getTemps;
+
+      function addLine() {
+	  var trs = document.querySelectorAll('#runParamsBody tr');
+	  tr_new = trs[trs.length-1].cloneNode(true);	  
+
+	  document.getElementById('runParamsBody').append(tr_new);
+
+	  // increment time input name
+	  tr_new.children[0].children[0].name = "t" + trs.length
+
+	  // increment temperature input name
+	  tr_new.children[1].children[0].name = "T" + trs.length
+
+      }
+
+      document.getElementById('addRow').onclick = addLine;
+
+      function plotProgram() {
+	  
+      }
       
     </script>
 
