@@ -22,15 +22,15 @@ def controller_fn():
         nonlocal t_prev
         
         k_p = 0.02
-        k_i = 0.001
+        k_i = 0.005
         k_d = 0.2
         
-        dT_sum += dT
-
         dT_prev = dT_prev or dT
         t_curr = datetime.now()
         dt = (t_curr - t_prev).seconds/60
         deriv = (dT - dT_prev)/dt
+
+        dT_sum += dT*dt
 
         t_prev = t_curr
         dT_prev = dT
