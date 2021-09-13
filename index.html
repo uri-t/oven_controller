@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+
+    </script>
+    
+  </head>
+  <body>
+    <p id="pgraph">
+      Welcome to the oven. let's get cooking
+    </p>
+    <button id="tempsButton" type="button">Get Temps</button>
+    <div>
+      <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+     const data = {
+	 labels: [],
+	 datasets: [{
+
+	     data: [],
+	 }]
+     };
+     var ctx = document.getElementById('myChart')
+      var myChart = new Chart(ctx, { type: 'line', data: data})
+      
+      function getTemps() {
+	  console.log("getting temps")
+	  var ajax_req = new XMLHttpRequest();
+	  ajax_req.onload = function() {
+	      var temp_data = JSON.parse(this.response);
+	      myChart.data.labels.push(...temp_data['t_millis']);
+	      myChart.data.datasets[0].data.push(...temp_data['temp_C']);
+	      myChart.update();
+	      console.log(myChart.data)
+	  }
+
+	  ajax_req.open("GET", "temps.json", true)
+	  ajax_req.send();
+      }
+
+      document.getElementById('tempsButton').onclick = getTemps;
+      
+    </script>
+
+  </body>
+</html>

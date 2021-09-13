@@ -1,3 +1,4 @@
+from queue import Queue
 import serial
 import time
 import threading
@@ -20,7 +21,9 @@ from datetime import datetime
 def run_controller(times, set_points, \
                    read_callback=None, \
                    write_callback=None, \
-                   controller_fn=None):
+                   controller_fn=None,
+                   temp_queue = None,
+                   stopped = False):
 
     # log program
     f = open('programs/%s.txt' % datetime.isoformat(datetime.now(), \
@@ -46,6 +49,10 @@ def run_controller(times, set_points, \
     controller_fn = controller_fn or default_controller
     
     while True:
+        if stopped:
+            ser.write(bytes("%0.0f\n" % on_frac, 'utf-8'))
+            break
+            
         if len(times) == 0:
             ser.write(bytes("0.0\n", 'utf-8'))
             return
@@ -79,7 +86,9 @@ def run_controller(times, set_points, \
             if read_callback:
                 read_callback(t, T)
 
-        
+            if temp_queue:
+                temp_queue.put(t, T)
+                
         on_frac = controller_fn(sp_curr - sum(temps)/len(temps))
 
         if write_callback:
@@ -91,3 +100,5 @@ def run_controller(times, set_points, \
 def default_controller(dT):
     k = 0.02
     return min(0.5, max(0, k*dT))
+
+    
