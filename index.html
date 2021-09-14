@@ -10,14 +10,13 @@
     <p id="pgraph">
       Welcome to the oven. let's get cooking
     </p>
-    <button id="tempsButton" type="button">Get Temps</button>
     
     <form id="runParams" action="/start">
       <table>
 	<thead>
 	  <tr>
-	    <th> Temp. (deg. C) </th>
-	    <th> time (mins) </th>
+	    <th> Time (mins) </th>
+	    <th> Temp. (deg. C)  </th>
 	  </tr>
 	</thead>
 	<tbody id="runParamsBody">
@@ -31,23 +30,27 @@
 	  </tr>
 	</tbody>
       </table>
-      
-      <input type="submit" value="Run">
+      <button id="addRow" type="button"> + </button>
     </form>
-    
-    <button id="addRow" type="button"> + </button>
-    
+
+    <button id="runButton"> Run </button>
+    <button id="cancelButton"> Cancel </button>
     <div>
       <canvas id="myChart"></canvas>
     </div>
 
     <script>
      const data = {
-	 labels: [],
-	 datasets: [{
-
-	     data: [],
-	 }]
+	 datasets: [{ data: [],
+		      label: 'Programmed',
+		      borderColor: 'rgba(240, 10, 10, 0.7)',
+		      backgroundColor: 'rgba(240, 10, 10, 0.5)'
+		    },
+		    { data: [],
+		      label: 'Actual',
+		      borderColor: 'rgba(10, 10, 10, 0.7)',
+		      backgroundColor: 'rgba(10, 10, 10, 0.5)'
+		    }]
      }
 
       const opts = {
@@ -60,28 +63,86 @@
       var myChart = new Chart(ctx, { type: 'line', data: data, options: opts})
       
       function getTemps() {
-	  console.log("getting temps")
 	  var ajax_req = new XMLHttpRequest();
 	  ajax_req.onload = function() {
 	      var temp_data = JSON.parse(this.response);
-	      myChart.data.labels.push(...temp_data['t_millis']);
-	      myChart.data.datasets[0].data.push(...temp_data['temp_C']);
+	      var new_data = []
+	      temp_data['t_millis'].forEach(function(t, ind) {
+		  new_data.push({x: t/(6e4), y: temp_data['temp_C'][ind]})
+	      })
+
+	      myChart.data.datasets[1].data.push(...new_data)
 	      myChart.update();
-	      console.log(myChart.data)
 	  }
 
 	  ajax_req.open("GET", "temps.json", true)
 	  ajax_req.send();
       }
 
-      document.getElementById('tempsButton').onclick = getTemps;
 
+      function getProgramData() {
+	  var prog_data = new FormData(document.querySelector('#runParams'));
+	  var ts = [];
+	  var Ts = [];
+	  
+	  Array.from(prog_data).sort( (x,y) => parseFloat(x[0].slice(1)) - parseFloat(y[0].slice(1)))
+	      .map(function (x) {
+		  if(x[0][0] == 't')
+		  {
+		      ts.push(parseFloat(x[1]))
+		  }
+		  else {
+		      Ts.push(parseFloat(x[1]))
+		  }
+	      }
+		  )
+
+	  return {t: ts, T: Ts}
+      }
+		   
+     
+      function plotProgram() {
+	  var prog_data = getProgramData();
+
+	  var data = [];
+	  
+	  prog_data.t.forEach(function(t, ind) {
+	      data.push({x: t, y: prog_data.T[ind]})
+	  })
+
+	  myChart.data.datasets[0].data = data;
+	  myChart.update();
+
+      }
+
+      var interval_id = undefined;
+      function toggleGetTemps(on){
+	  if(on) {
+	      interval_id = setInterval(getTemps, 2000);
+	  }
+	  else {
+	      clearInterval(interval_id);
+	  }
+      }
+      
+      function addChangeListener(tr) {
+	  Array.from(tr.children).forEach(function (x) {
+	      x.onchange = plotProgram;
+	  })
+      }
+
+      addChangeListener(document.querySelector('#runParamsBody tr'));
+      
       function addLine() {
 	  var trs = document.querySelectorAll('#runParamsBody tr');
 	  tr_new = trs[trs.length-1].cloneNode(true);	  
 
 	  document.getElementById('runParamsBody').append(tr_new);
 
+	  addChangeListener(tr_new.children[0])
+	  addChangeListener(tr_new.children[1])
+	  
+	  tr_new.children[0]
 	  // increment time input name
 	  tr_new.children[0].children[0].name = "t" + trs.length
 
@@ -92,9 +153,35 @@
 
       document.getElementById('addRow').onclick = addLine;
 
-      function plotProgram() {
+
+      function sendStartRequest()
+      {
+	  // clear data from chart
+	  myChart.data.datasets[1].data = [];
+
+	  // start getting temperatures
+	  toggleGetTemps(true)
 	  
+	  var req = new XMLHttpRequest();
+	  var form_data = new FormData(document.querySelector('#runParams'));
+	  var params = new URLSearchParams(form_data).toString();
+	  req.open('POST', '/start?' + params);
+	  req.send(form_data);
       }
+
+      document.getElementById('runButton').onclick = sendStartRequest;
+      
+      function sendCancelRequest()
+      {
+	  // start getting temperatures
+	  toggleGetTemps(false)
+	  
+	  var req = new XMLHttpRequest();
+	  req.open('POST', '/cancel');
+	  req.send();
+      }
+
+      document.getElementById('cancelButton').onclick = sendCancelRequest;
       
     </script>
 

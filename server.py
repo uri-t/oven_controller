@@ -7,7 +7,7 @@ from urllib.parse import parse_qs
 import json
 import client
 
-from controller import Controller
+from dummy_controller import Controller
 class Server:
     def run(self):
         # set up socket 
@@ -55,8 +55,15 @@ class Server:
         header_str += '\r\n'
         return header_str
     
-    def start(self):
+    def start(self, params):
         print('starting controller')
+        print(params)
+
+        # process params
+        ts = [float(key[1:]) for key in sorted(params.keys()) if key[0] == 't']
+
+        Ts = [float(params[key][0]) for key in sorted(params.keys()) if key[0] == 'T']
+        
         # stop controller if running
         if self.t_controller:
             self.controller.terminate()
@@ -68,21 +75,21 @@ class Server:
                                                        timespec='minutes'), 'a')
         
         self.t_controller = threading.Thread(target = self.controller.run_controller, \
-                args = ([0, 60], [40, 180]), \
+                args = (ts, Ts), \
                 kwargs = { 'read_callback': client.writer_fn(f),
                            'write_callback': client.write_duty_cycle,
                            'controller_fn': client.controller_fn(),
                            'temp_queue': self.q})
         self.t_controller.start()
-        return self.serve()
+        return self.header({}) + "<html></html>"
     
     def cancel(self):
         if self.controller:
             self.controller.terminate()
             self.t_controller.join()
             self.controller = Controller()
-            
-        return self.serve()
+
+        return self.header({}) + "<html></html>"
 
     def serve(self, uri=None):
         fname = ""
@@ -113,7 +120,7 @@ class Server:
         if uri_parsed.path == '/cancel':
             return self.cancel()
         elif uri_parsed.path == '/start':
-            return self.start()
+            return self.start(params)
         elif uri_parsed.path == '/temps.json':
             return self.temps(temp_data)
         else:
