@@ -7,14 +7,14 @@ from urllib.parse import parse_qs
 import json
 import client
 
-from dummy_controller import Controller
+from controller import Controller
 class Server:
     def run(self):
         # set up socket 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
-        host = ''
+        host = '127.0.0.1'
         port = 3500
         s.bind((host, port))
         
@@ -60,10 +60,12 @@ class Server:
         print(params)
 
         # process params
-        ts = [float(key[1:]) for key in sorted(params.keys()) if key[0] == 't']
+        ts = [float(params[key][0]) for key in sorted(params.keys()) if key[0] == 't']
 
         Ts = [float(params[key][0]) for key in sorted(params.keys()) if key[0] == 'T']
-        
+
+        print(ts)
+        print(Ts)
         # stop controller if running
         if self.t_controller:
             self.controller.terminate()

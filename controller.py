@@ -57,6 +57,7 @@ class Controller:
         
         while True:
             if self.stopped:
+                print("stopping controller")
                 ser.write(bytes("0.0\n", 'utf-8'))
                 break
             

@@ -20,7 +20,7 @@ def controller_fn():
         nonlocal dT_prev
         nonlocal t_prev
         
-        k_p = 0.02
+        k_p = 0.03
         k_i = 0.005
         k_d = 0.2
         
