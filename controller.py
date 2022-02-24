@@ -3,7 +3,7 @@ import serial
 import time
 import threading
 from datetime import datetime
-
+import glob
 
 # takes in an array of times (in minutes) and setpoints (in deg. C)
 # and writes the appropriate duty cycle to follow this heating trajectory.
@@ -42,7 +42,7 @@ class Controller:
         f.close()
 
     
-        ser = serial.Serial('/dev/ttyACM0', timeout=7)
+        ser = self.serial_connection()
     
         t_start = datetime.now()
         t_prev = times[0]
@@ -87,15 +87,24 @@ class Controller:
             temps = []
 
             while x.is_alive():
-                data = ser.readline().decode('utf-8').strip().split(",")
-                t = int(data[0])
-                T = float(data[1])
-                temps.append(T)
-                if read_callback:
-                    read_callback(t, T)
+                try:
+                    data = ser.readline().decode('utf-8').strip().split(",")
+                    t = int(data[0])
+                    T = float(data[1])
+                    temps.append(T)
+                    if read_callback:
+                        read_callback(t, T)
 
-                if temp_queue:
-                    temp_queue.put((t, T))
+                    if temp_queue:
+                        temp_queue.put((t, T))
+
+                except serial.serialutil.SerialException as e:
+                    ser = self.serial_connection(ser)
+                    ser.write(0)
+                    print("========================")
+                    print("caught error")
+                    print(e)
+                    print("========================")
                 
             on_frac = controller_fn(sp_curr - sum(temps)/len(temps))
             
@@ -109,4 +118,17 @@ class Controller:
         k = 0.02
         return min(0.5, max(0, k*dT))
         
-    
+
+    def serial_connection(self, ser = None):
+
+        if ser:
+            ser.close()
+            
+        fnames = []
+        
+        while len(fnames) == 0:
+            time.sleep(1)
+            fnames = glob.glob('/dev/ttyACM*')
+            print("device names: %s " % fnames)
+            
+        return serial.Serial(fnames[0], timeout=7)
