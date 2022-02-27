@@ -1,5 +1,7 @@
 int period = 2; //period of duty cycle in seconds
 float on_frac = 0; //default duty cycle
+long last_read = 0;
+
 
 void setup() {
   Serial.begin(9600);
@@ -14,13 +16,20 @@ float get_temp() {
 }
 
 void loop() {
-
+  
   if (Serial.available())
   {
     String cmd;
+    last_read = millis();
     on_frac = Serial.readStringUntil('\n').toFloat();
   }
 
+
+  // reset on frac after a period of no serial reads.
+  // this is to prevent overheating
+  if ((millis() - last_read) > 10000) {
+    on_frac = 0;
+  }
   dutyCycle(on_frac);
 
   float sum = 0;
