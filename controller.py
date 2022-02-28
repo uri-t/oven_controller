@@ -88,7 +88,8 @@ class Controller:
 
             while x.is_alive():
                 try:
-                    data = ser.readline().decode('utf-8').strip().split(",")
+                    curr_line = ser.readline().decode('utf-8')
+                    data = curr_line.strip().split(",")
                     t = int(data[0])
                     T = float(data[1])
                     temps.append(T)
@@ -105,9 +106,26 @@ class Controller:
                     print("caught error")
                     print(e)
                     print("========================")
+
+                except ValueError as e:
+                    print(data)
+                    print(curr_line)
+                    ser.reset_input_buffer()
+                    print("========================")
+                    print("value error, retrying")
+                    print(e)
+                    print("========================")
                 
-            on_frac = controller_fn(sp_curr - sum(temps)/len(temps))
-            
+
+            try:
+                on_frac = controller_fn(sp_curr - sum(temps)/len(temps))
+
+            except:
+                print("========================")
+                print("measurement failed, defaulting to duty cycle of 0")
+                print("========================")
+                on_frac = 0
+                
             if write_callback:
                 write_callback(on_frac)
                 

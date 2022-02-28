@@ -19,7 +19,6 @@ void loop() {
   
   if (Serial.available())
   {
-    String cmd;
     last_read = millis();
     on_frac = Serial.readStringUntil('\n').toFloat();
   }
@@ -34,7 +33,7 @@ void loop() {
 
   float sum = 0;
   int num_pts = 15;
-  int tdelay = 1;
+  int tdelay = 2;
 
   for (int i = 0; i < num_pts; i++) {
     sum += get_temp();
@@ -47,9 +46,12 @@ void loop() {
 
 void dutyCycle(float on_frac) {
   if (on_frac > 0) {
+    digitalWrite(LED_BUILTIN, HIGH);
     digitalWrite(13, HIGH);
     delay(1000 * period * on_frac);
   }
+  
+  digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(13, LOW);
   delay(1000 * period * (1 - on_frac));
 }
